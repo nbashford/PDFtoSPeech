@@ -14,6 +14,7 @@ from pdf2image import convert_from_path
 
 from PDFfile import PdfImage
 from PDFtext import TextPDF
+from PDFaudio import AudioPDF
 
 PDF_FOLDER = "./pdf_folder"
 CURRENT_FILE = None  #needed in main
@@ -24,6 +25,25 @@ tk_images_list = None  # somewhat needed
 
 
 # ----------------- MAIN FUNCTIONS ---------------------
+
+
+def switch_next_page_state():
+    state = 'active' if next_page['state'] == 'disabled' else 'disabled'
+
+    previous_page.config(state=state)
+    next_page.config(state=state)
+
+
+def switch_play_audio_state():
+    state = 'active' if audio_button['state'] == 'disabled' else 'disabled'
+    audio_button.config(state=state)
+
+
+def switch_text_size_state():
+    state = 'active' if decrease_button['state'] == 'disabled' else 'disabled'
+    decrease_button.config(state=state)
+    increase_button.config(state=state)
+
 
 def decrease_font_size():
     text_pdf.decrease_font_size()
@@ -41,24 +61,8 @@ def update_current_file_label():
     current_file.config(text=images_pdf.current_file.split('/')[-1].split('.')[0])
 
 
-def update_extracted_text_label(current_page=0):
-    """
-    MAIN
-    Needs TK_IMAGES from PDFfile
-
-    """
-    print("In here")
-    total_pages = len(images_pdf.tk_images_list)
-    page_status = f"{current_page}/{total_pages}"
-    text_extracted_label.config(text=f"Audio Extracted: {page_status}")
-    print(page_status)
-
-
 def view_next_page():
     """
-    MAIN
-    calls:
-        text class
     """
     next_page_num = images_pdf.view_next_page()  # display next page image
     update_page_num_label(next_page_num + 1)  # update page label
@@ -67,9 +71,6 @@ def view_next_page():
 
 def view_previous_page():
     """
-    MAIN
-        calls:
-        text class
     """
     prev_page_num = images_pdf.view_previous_page()  # display prev page image
     update_page_num_label(prev_page_num + 1)  # update page label
@@ -80,6 +81,14 @@ def update_page_num_label(num=1):
     """MAIN called when viewing prev and next page - plus when called in PDF file class"""
     page_label.config(text=f"Page: {num}", fg="black")
 
+
+def force_constant_canvas_width():
+    middle_width = middle_frame.winfo_width()
+    half_width = middle_width // 2
+
+    pdf_frame.config(width=half_width)
+    pdf_main_frame.config(width=half_width)
+    root.update_idletasks()
 
 
 def ensure_equal_frame_sizes(pdf_frame, text_frame, parent_frame):
@@ -129,7 +138,8 @@ def open_pdf_file():
             else:
                 text_pdf.reset_text_pages()  # call to PDFtext
                 extracted_icon.config(text='□')
-                """option to delete prev audio files?"""
+                """option to delete prev audio files?
+                possibly a 'reset prev audio function' """
 
             # DISPLAY THE IMAGE
             images_pdf.update_current_file(destination_path)  # updates the current file name
@@ -143,10 +153,11 @@ def open_pdf_file():
             text_pdf.get_all_text(images_pdf.current_file)  # retrieve all texts from PDF files
             text_pdf.insert_text()  # display the new pages text
 
-            # create_audio_files()  # creates audio files for each page
+            """AUDIO functionality"""
+            audio_pdf.create_audio_files_threaded(text_pdf.text_pages, images_pdf.current_file)
 
-            create_audio_files_threaded(text_pdf.text_pages, images_pdf.current_file)
-            '''may need to pass (text_pdf.text_pages, images_pdf.current_file))'''
+            # ensures canvas remains half the middle frame size
+            force_constant_canvas_width()
 
         # filename already loaded
         else:
@@ -155,139 +166,24 @@ def open_pdf_file():
             raise FileExistsError
 
 
-
-
-
-
-"""
-get all the audio files of each page created before displaying the pdf files 
-"""
-
-
-def save_audio(audio, file_name):
-    """AUDIO"""
-    audio.save(f"{audio_folder}/{file_name}.mp3")
-    """
-    maybe there is a way to break up the audio into many pieces 
-    - save each seperately - detect for the stop event after each mini save 
-    """
-
-
-def get_audio(text):
-    """AUDIO"""
-    return gTTS(text, lang='en')
-
-
-'''
-
-issue - the new thread is starting as the old thread is still finishing, making some 
-of the variables unsafe - i.e. the page number 
-
-- solution / workaround - limit the number of pages audio can generate initially 
-- or simply make a new thread for each single audio page 
-- i.e. when user presses 'play audio'
-- thread is created that gets only that page numbers text and audio and saves it 
-- 
-
-'''
-
-stop_event = threading.Event()
-audio_thread = None
-
-
-def generate_audio_files_with_feedback(text_pages, current_file):
-    """
-    AUDIO
-    NEEDS CURRENT_FILE and TEXT PAGES dict
-    """
-    # status_label.config(text="Creating audio files, please wait...")
-    saved_audio = None
-    for page, text in text_pages.items():
-        if stop_event.is_set():
-            print("previous thread stopped")
-            return
-        # text = text_pages[page]
-
-        text_audio = get_audio(text)
-        update_extracted_text_label(page + 1)
-
-        filename = current_file.split('/')[-1].split('.')[0]
-        audio_filename = f"{filename}_{page}"
-        save_audio(text_audio, audio_filename)
-    # update_extracted_text_label(page+1)
-    extracted_icon.config(text='✓')
-
-    # status_label.config(text="Audio files created successfully!")
-
-
-# def generate_audio_files_with_feedback(text_pages, current_file):
-#     """make another function like above
-#     but instead makes a single mp3 for that page and does NOT save it"""
-
-def create_audio_files_threaded(text_pages, current_file):
-    """
-    AUDIO
-    1st called
-    """
-    global audio_thread, stop_event
-    if audio_thread and audio_thread.is_alive():  #
-        print("Stopping previous thread...")
-        stop_event.set()  # Signal the previous thread to stop
-        audio_thread.join()  # Wait for the thread to stop
-
-    stop_event.clear()
-    # audio_thread = threading.Thread(target=generate_audio_files_with_feedback)
-    audio_thread = threading.Thread(target=lambda: generate_audio_files_with_feedback(text_pages, current_file))
-    audio_thread.daemon = True
-    audio_thread.start()
-
-
-
-def get_page_mp3():
-    """
-    AUDIO
-    NEEDS CURRENT FILE FROM PDFfile !!!
-    """
-
-    current_page = images_pdf.get_img_page_num()
-    # now need to get the file name
-    current_filename = images_pdf.current_file.split('/')[-1].split('.')[0]
-    audio_file_path = f"{audio_folder}/{current_filename}_{current_page}.mp3"
-    return audio_file_path
-
-
-
-pygame.mixer.init()
-current_playing_file = None  # is this needed?
-
-
 def text_to_voice():
     """
-    AUDIO
-    Converts text to speech and plays the audio in a separate thread.
+    Converts text to speech
     """
-    try:
-        audio = get_page_mp3()
-        pygame.mixer.music.load(audio)
-        pygame.mixer.music.play()
+
+    playing = audio_pdf.text_to_voice(current_page=images_pdf.get_img_page_num(),
+                            current_file=images_pdf.current_file)
+    if playing:
         audio_button.config(state='disabled')
         stop_audio_button.config(state='active')
-    except pygame.error:
-        messagebox.showinfo(title="Still Loading",
-                            message="Audio data still loading. Please wait")
 
 
 def stop_audio():
     """AUDIO"""
-    pygame.mixer.music.stop()
+
+    audio_pdf.stop_audio()
     audio_button.config(state='active')
     stop_audio_button.config(state='disabled')
-
-
-def delete_all_mp3_file():
-    """AUDIO"""
-    for audio in os.listdir(audio_folder):
-        os.remove(audio)
 
 
 # ---------------------------------------------------
@@ -480,30 +376,16 @@ increase_button = Button(audio_frame, text="+", bg="white", fg='black', font=NOR
 increase_button.grid(row=0, column=4, sticky='w')
 
 
-def switch_next_page_state():
-    state = 'active' if next_page['state'] == 'disabled' else 'disabled'
-
-    previous_page.config(state=state)
-    next_page.config(state=state)
-
-
-def switch_play_audio_state():
-    state = 'active' if audio_button['state'] == 'disabled' else 'disabled'
-    audio_button.config(state=state)
-
-
-def switch_text_size_state():
-    state = 'active' if decrease_button['state'] == 'disabled' else 'disabled'
-    decrease_button.config(state=state)
-    increase_button.config(state=state)
-
-
-# initialise the pdf image object with the tk components
+# initialise helper class objects
 images_pdf = PdfImage(root, pdf_main_frame, pdf_frame, text_box)
 
 text_pdf = TextPDF(text_box)
 
+audio_pdf = AudioPDF(audio_folder, text_extracted_label, extracted_icon)
 
 
 if __name__ == "__main__":
+    # images_pdf = PdfImage(root, pdf_main_frame, pdf_frame, text_box)
+    # text_pdf = TextPDF(text_box)
+    # audio_pdf = AudioPDF(audio_folder, text_extracted_label, extracted_icon)
     root.mainloop()
