@@ -115,6 +115,30 @@ class PdfImage:
     def update_current_file(self, destination_path):
         self.current_file = destination_path
 
+
+    def view_next_page(self):
+
+        current_page = self.get_img_page_num()  # part of PDF file class
+        if current_page + 1 == len(self.tk_images_list):
+            next_page_num = 0
+        else:
+            next_page_num = current_page + 1
+
+        self.display_img_page(next_page_num)
+        return next_page_num
+
+    def view_previous_page(self):
+
+        current_page = self.get_img_page_num()  # part of PDF file class
+        prev_page_num = current_page - 1
+
+        if prev_page_num < 0:
+            prev_page_num = len(self.tk_images_list) - 1
+
+        self.display_img_page(prev_page_num)  # part of PDFfile function
+        return prev_page_num
+
+
     # def get_images_from_file(self):  # , last_page=10):
     #     """
     #     1. gets the list of images

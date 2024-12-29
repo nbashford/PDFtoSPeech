@@ -13,194 +13,73 @@ import pygame
 from pdf2image import convert_from_path
 
 from PDFfile import PdfImage
+from PDFtext import TextPDF
 
 PDF_FOLDER = "./pdf_folder"
 CURRENT_FILE = None  #needed in main
 CURRENT_IMAGE = None  # not needed in main
 tk_image = None  # somehwat needed - only for page number
 tk_images_list = None  # somewhat needed
-text_pages = {}
-
-# -----
 
 
 
-# def resize_images(image_list):
-#     """
-#     # NEED the pdf_main_frame winfo_width and height
-#     """
-#     pil_image = image_list[0]
-#
-#     # 2. need to get the width and height of the canvas frame
-#     max_width = pdf_main_frame.winfo_width()
-#     max_height = pdf_main_frame.winfo_height()
-#
-#     aspect_ratio = min(max_width / pil_image.width, max_height / pil_image.height)
-#     # 3. change the width and height based on aspect ratio
-#     new_width = int(pil_image.width * aspect_ratio)
-#     new_height = int(pil_image.height * aspect_ratio)
-#
-#     for i in range(len(image_list)):
-#         image_list[i] = image_list[i].resize((new_width, new_height), Image.LANCZOS)
-#
-#     return new_width, new_height
+# ----------------- MAIN FUNCTIONS ---------------------
 
-
-# def create_tk_image_list(image_list):
-#     tk_images = []
-#     for img in image_list:
-#         tk_img = ImageTk.PhotoImage(img)
-#         tk_images.append(tk_img)
-#     return tk_images
-
-
-# def display_img_page(page=0):  # width, height,
-#     global curre, tk_image
-#     if CURRENT_IMAGE and tk_image:
-#         CURRENT_IMAGE = None
-#         tk_image = None
-#     tk_image = tk_images_list[page]
-#     # CURRENT_IMAGE = pdf_frame.create_image(width // 2, height // 2, image=tk_image)
-#     CURRENT_IMAGE = pdf_frame.create_image(0, 0, image=tk_image, anchor="nw")
-
-#
-# def show_pdf_image(canvas_frame):
-#     """
-#     In PDF
-#     """
-#     global tk_image, tk_images_list
-#
-#     if CURRENT_FILE:
-#         if TK_IMAGES:
-#             TK_IMAGES.clear()
-#             TK_IMAGES = None  # This removes references to the images in the list
-#             tk_image = None  # Set the current image to None
-#
-#         images = get_images_from_file(CURRENT_FILE)  # gets all PIL images from PDF files
-#         new_width, new_height = resize_images(images)  # resizes PIL images to fit canvas
-#         TK_IMAGES = create_tk_image_list(images)  # holds TK photo images of loaded PDF pages
-#         display_img_page()  # new_width, new_height)  # show image on canvas
-#
-#         update_page_num_label()  # update page number label
-#         get_all_text()  # retrieve all texts from PDF files
-#         insert_text()  # display the new pages text
-#
-#         # create_audio_files()  # creates audio files for each page
-#         create_audio_files_threaded()
-#
-#         update_current_file_label()
-#
-#         canvas_frame.config(width=new_width, height=new_height)
-#         pdf_main_frame.config(width=new_width, height=new_height)
-#         root.update_idletasks()
+def decrease_font_size():
+    text_pdf.decrease_font_size()
 
 
 def increase_font_size():
+    text_pdf.increase_font_size()
+
+
+def update_current_file_label():
     """
-    part of text
+    MAIN
+    NEEDS CURRENT FILE FROM PDFfile
     """
-    global RESIZED_FONT
-    RESIZED_FONT[1] = RESIZED_FONT[1] + 1
-    insert_text(alt_size=True)
+    current_file.config(text=images_pdf.current_file.split('/')[-1].split('.')[0])
 
 
-def decrease_font_size():
+def update_extracted_text_label(current_page=0):
     """
-    part of text
+    MAIN
+    Needs TK_IMAGES from PDFfile
+
     """
-    global RESIZED_FONT
-    if RESIZED_FONT[1] > 1:
-        RESIZED_FONT[1] = RESIZED_FONT[1] - 1
-    insert_text(alt_size=True)
-
-
-def current_page_text():
-    """
-    part of text
-    """
-    current_page_index = images_pdf.get_img_page_num()
-    current_text = text_pages[current_page_index]
-    return current_text
-
-
-def insert_text(alt_size=False):
-    """
-    part of text
-    """
-    if alt_size:
-        font = tuple(RESIZED_FONT)
-    else:
-        font = NORMAL
-    text_box.config(state='normal')
-    current_text = current_page_text()
-    text_box.delete("1.0", END)  # from first row till end
-    text_box.insert("1.0", current_text)
-    text_box.tag_add("center", "1.0", "end")
-    text_box.config(font=font, state=DISABLED)
-
-
-# def get_img_page_num():
-#     """
-#     part of PDF class
-#     """
-#     current_img_index = tk_images_list.index(tk_image)
-#     return current_img_index
-
-
-# From above here
-
-
+    print("In here")
+    total_pages = len(images_pdf.tk_images_list)
+    page_status = f"{current_page}/{total_pages}"
+    text_extracted_label.config(text=f"Audio Extracted: {page_status}")
+    print(page_status)
 
 
 def view_next_page():
     """
     MAIN
-    Needs TK_IMAGES from PDFfile
     calls:
-        PDF file class
         text class
     """
-    current_page = images_pdf.get_img_page_num()  # part of PDF file class
-    if current_page + 1 == len(images_pdf.tk_images_list):
-        next_page = 0
-    else:
-        next_page = current_page + 1
-
-    images_pdf.display_img_page(next_page)  # part of PDFfile function
-    update_page_num_label(next_page + 1)
-    insert_text()  #     part of text class
+    next_page_num = images_pdf.view_next_page()  # display next page image
+    update_page_num_label(next_page_num + 1)  # update page label
+    text_pdf.insert_text(next_page_num)  # part of text class # insert that pages text
 
 
 def view_previous_page():
     """
     MAIN
-    Needs TK_IMAGES from PDFfile
         calls:
-        PDF file class
         text class
     """
-    current_page = images_pdf.get_img_page_num()  # part of PDF file class
-    prev_page = current_page - 1
-
-    if prev_page < 0:
-        prev_page = len(images_pdf.tk_images_list) - 1
-
-    images_pdf.display_img_page(prev_page)  # part of PDFfile function
-    update_page_num_label(prev_page + 1)
-    insert_text()  #     part of text class
+    prev_page_num = images_pdf.view_previous_page()  # display prev page image
+    update_page_num_label(prev_page_num + 1)  # update page label
+    text_pdf.insert_text(prev_page_num)  # part of text class # insert that pages text
 
 
 def update_page_num_label(num=1):
     """MAIN called when viewing prev and next page - plus when called in PDF file class"""
     page_label.config(text=f"Page: {num}", fg="black")
 
-
-
-
-def create_pdf_folder():
-    """MAIN"""
-    if not os.path.isdir(PDF_FOLDER):
-        os.mkdir(PDF_FOLDER)
 
 
 def ensure_equal_frame_sizes(pdf_frame, text_frame, parent_frame):
@@ -220,13 +99,10 @@ def component_switch(frame1, frame2):
     ensure_equal_frame_sizes(frame2, text_frame, middle_frame)
 
 
-
-"""Below is called from the load buttons"""
 def open_pdf_file():
     """
-    NEEDS CURRENT FILE FROM PDFfile
+    MAIN
     """
-    # global CURRENT_FILE
 
     filepath = filedialog.askopenfile(title="Select PDF file",
                                       defaultextension='pdf',
@@ -238,50 +114,46 @@ def open_pdf_file():
         filename = source_path.split('/')[-1]
         destination_path = f"{PDF_FOLDER}/{filename}"
 
+        # new file selected
         if filename not in os.listdir(PDF_FOLDER):
             shutil.copy(source_path, destination_path)
-            # if not CURRENT_FILE: # i.e. pdf already showing - don't switch frames
-            #     switch_next_page_state()
-            #     switch_play_audio_state()
-            #     switch_text_size_state()
 
-            # show_pdf_image(pdf_frame)  # show the pdf and everything else
+            # 1st file loaded
             if not images_pdf.current_file: # call from PDFfile - initial load call
-                component_switch(pdf_temp_frame, pdf_main_frame)
+                component_switch(pdf_temp_frame, pdf_main_frame) # set up canvas frame
+                # activate user buttons
                 switch_next_page_state()
                 switch_play_audio_state()
                 switch_text_size_state()
+            # file previously loaded
             else:
-                reset_text_pages()  # call to PDFtext
+                text_pdf.reset_text_pages()  # call to PDFtext
                 extracted_icon.config(text='□')
+                """option to delete prev audio files?"""
 
-            images_pdf.update_current_file(destination_path)  #updates the current file name
-            # CURRENT_FILE = destination_path
-
-            # switch_next_page_state()
-            # switch_play_audio_state()
-            # switch_text_size_state()
+            # DISPLAY THE IMAGE
+            images_pdf.update_current_file(destination_path)  # updates the current file name
             images_pdf.show_pdf_image()  # gets the images from the pdf file
 
-            # (Taken from the PDFtext class)
-            """text functions - responsibility of audio"""
-            get_all_text()  # retrieve all texts from PDF files
-            insert_text()  # display the new pages text
-            # create_audio_files()  # creates audio files for each page
-            create_audio_files_threaded()
-
-            """Updating functions - responsibility of main"""
+            # UPDATE LABELS
             update_page_num_label()  # update page number label
             update_current_file_label()
 
+            """text functions - responsibility of text"""
+            text_pdf.get_all_text(images_pdf.current_file)  # retrieve all texts from PDF files
+            text_pdf.insert_text()  # display the new pages text
 
-        else:  # filename already loaded1
+            # create_audio_files()  # creates audio files for each page
+
+            create_audio_files_threaded(text_pdf.text_pages, images_pdf.current_file)
+            '''may need to pass (text_pdf.text_pages, images_pdf.current_file))'''
+
+        # filename already loaded
+        else:
             messagebox.showinfo(title="Loaded",
                                 message="File already loaded")
             raise FileExistsError
 
-    else:
-        print("No file selected")
 
 
 
@@ -290,16 +162,19 @@ def open_pdf_file():
 """
 get all the audio files of each page created before displaying the pdf files 
 """
-audio_folder = "./audio_folder"
-if not os.path.isdir(audio_folder):
-    os.mkdir(audio_folder)
 
 
 def save_audio(audio, file_name):
+    """AUDIO"""
     audio.save(f"{audio_folder}/{file_name}.mp3")
+    """
+    maybe there is a way to break up the audio into many pieces 
+    - save each seperately - detect for the stop event after each mini save 
+    """
 
 
 def get_audio(text):
+    """AUDIO"""
     return gTTS(text, lang='en')
 
 
@@ -320,21 +195,23 @@ stop_event = threading.Event()
 audio_thread = None
 
 
-def generate_audio_files_with_feedback():
+def generate_audio_files_with_feedback(text_pages, current_file):
     """
-    NEEDS CURRENT_FILE FROM PDFfile
+    AUDIO
+    NEEDS CURRENT_FILE and TEXT PAGES dict
     """
-
     # status_label.config(text="Creating audio files, please wait...")
     saved_audio = None
-    for page in text_pages:
+    for page, text in text_pages.items():
         if stop_event.is_set():
             print("previous thread stopped")
             return
-        text = text_pages[page]
+        # text = text_pages[page]
+
         text_audio = get_audio(text)
         update_extracted_text_label(page + 1)
-        filename = images_pdf.current_file.split('/')[-1].split('.')[0]
+
+        filename = current_file.split('/')[-1].split('.')[0]
         audio_filename = f"{filename}_{page}"
         save_audio(text_audio, audio_filename)
     # update_extracted_text_label(page+1)
@@ -343,25 +220,33 @@ def generate_audio_files_with_feedback():
     # status_label.config(text="Audio files created successfully!")
 
 
-def create_audio_files_threaded():
+# def generate_audio_files_with_feedback(text_pages, current_file):
+#     """make another function like above
+#     but instead makes a single mp3 for that page and does NOT save it"""
+
+def create_audio_files_threaded(text_pages, current_file):
     """
+    AUDIO
     1st called
     """
     global audio_thread, stop_event
-    if audio_thread and audio_thread.is_alive():
+    if audio_thread and audio_thread.is_alive():  #
         print("Stopping previous thread...")
         stop_event.set()  # Signal the previous thread to stop
         audio_thread.join()  # Wait for the thread to stop
 
     stop_event.clear()
-    audio_thread = threading.Thread(target=generate_audio_files_with_feedback)
+    # audio_thread = threading.Thread(target=generate_audio_files_with_feedback)
+    audio_thread = threading.Thread(target=lambda: generate_audio_files_with_feedback(text_pages, current_file))
     audio_thread.daemon = True
     audio_thread.start()
 
 
+
 def get_page_mp3():
     """
-    NEEDS CURRENT FILE FROM PDFfile
+    AUDIO
+    NEEDS CURRENT FILE FROM PDFfile !!!
     """
 
     current_page = images_pdf.get_img_page_num()
@@ -371,17 +256,14 @@ def get_page_mp3():
     return audio_file_path
 
 
-def delete_all_mp3_file():
-    for audio in os.listdir(audio_folder):
-        os.remove(audio)
-
 
 pygame.mixer.init()
-current_playing_file = None
+current_playing_file = None  # is this needed?
 
 
 def text_to_voice():
     """
+    AUDIO
     Converts text to speech and plays the audio in a separate thread.
     """
     try:
@@ -396,61 +278,27 @@ def text_to_voice():
 
 
 def stop_audio():
+    """AUDIO"""
     pygame.mixer.music.stop()
     audio_button.config(state='active')
     stop_audio_button.config(state='disabled')
 
 
-def update_current_file_label():
-    """
-    NEEDS CURRENT FILE FROM PDFfile
-    """
-    current_file.config(text=images_pdf.current_file.split('/')[-1].split('.')[0])
+def delete_all_mp3_file():
+    """AUDIO"""
+    for audio in os.listdir(audio_folder):
+        os.remove(audio)
 
 
-def update_extracted_text_label(current_page=0):
-    """
-    Needs TK_IMAGES from PDFfile
-    """
-    print("In here")
-    total_pages = len(images_pdf.tk_images_list)
-    page_status = f"{current_page}/{total_pages}"
-    text_extracted_label.config(text=f"Audio Extracted: {page_status}")
-    print(page_status)
+# ---------------------------------------------------
 
 
-def reset_text_pages():
-    global text_pages
-    text_pages = {}
+audio_folder = "./audio_folder"
+if not os.path.isdir(audio_folder):
+    os.mkdir(audio_folder)
 
-
-def get_all_text():
-    """
-    NEEDS CURRENT FILE FROM PDFfile
-    """
-    global text_pages
-    """
-    Now need some function to call to pass the page of text to
-    - pass the text for each page
-
-    - this gets ALL texts - could maybe call this when the pdf image is loaded 
-    """
-    doc = fitz.open(images_pdf.current_file)  # open a document
-    for page_num, page in enumerate(doc):  # iterate the document pages
-        pdf_string = None
-        text = page.get_text()  # get plain text encoded as UTF-8
-        if not text:
-            pdf_string = "The loaded PDF has no text metadata. It is likely not a true PDF."
-        else:
-            pdf_string = text
-
-        text_pages[page_num] = pdf_string
-        # pages.append(pdf_string)
-
-        # text_to_voice(pdf_string)
-        print(text)
-        # break
-
+if not os.path.isdir(PDF_FOLDER):
+    os.mkdir(PDF_FOLDER)
 
 
 TITLE = ("Georgia", 30, "bold")
@@ -544,14 +392,6 @@ pdf_frame = Canvas(pdf_main_frame, bg='white')  # -- MAIN PDF CANVAS ------
 pdf_frame.pack(fill='both', expand=True)
 pdf_frame.grid_propagate(False)
 
-"""
-want message box saying to please wait 
-
-- if pdf file > 5 pages - do not load the entire mp3 audio 
-- instead do a page at a time when requested 
-
-- maybe i can run the gTTs as a thread - so it doesn't block 
-"""
 
 text_frame = Frame(middle_frame, bg='lightgrey', width=middle_frame.winfo_width() // 2)  # ---- TEXT FRAME (Right) ---
 text_frame.grid(row=1, column=1, sticky='nsew', pady=5, padx=5)
@@ -661,8 +501,9 @@ def switch_text_size_state():
 # initialise the pdf image object with the tk components
 images_pdf = PdfImage(root, pdf_main_frame, pdf_frame, text_box)
 
+text_pdf = TextPDF(text_box)
+
 
 
 if __name__ == "__main__":
-    create_pdf_folder()
     root.mainloop()
